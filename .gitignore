@@ -1,0 +1,4 @@
+.env
+# MySQL 数据目录（如有本地挂载）
+mysql_data/
+.DS_Store
