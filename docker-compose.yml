@@ -19,7 +19,7 @@ services:
       - backend-net
 
   backend-base:
-    image: zjuse-backend-base:latest
+    image: ${IMAGE_PREFIX}zjuse-backend-base:latest
     container_name: backend-base
     environment:
       DB_HOST: mysql
@@ -34,7 +34,7 @@ services:
       - backend-net
 
   backend-course:
-    image: zjuse-backend-course:latest
+    image: ${IMAGE_PREFIX}zjuse-backend-course:latest
     container_name: backend-course
     environment:
       DB_HOST: mysql
@@ -54,6 +54,8 @@ services:
   gateway:
     build:
       context: ./gateway
+      args:
+        IMAGE_PREFIX: ${IMAGE_PREFIX}
     container_name: gateway
     ports:
       - "8080:80"

@@ -29,21 +29,6 @@
 
 ## 部署流程
 
-### 前置：确认子组镜像已就绪
-
-```bash
-docker pull ghcr.io/uppi7/zjuse-backend-base:latest
-docker pull ghcr.io/uppi7/zjuse-frontend-base:latest
-docker pull ghcr.io/uppi7/zjuse-backend-course:latest
-docker pull ghcr.io/uppi7/zjuse-frontend-course:latest
-```
-
-如果镜像仓库需要认证，先登录：
-
-```bash
-echo "<github-token>" | docker login ghcr.io -u <username> --password-stdin
-```
-
 ### 1. 克隆本仓库
 
 ```bash
@@ -57,33 +42,33 @@ cd repo-infrastructure
 cp .env.example .env
 ```
 
-### 3. 更新镜像引用
-
-将 `docker-compose.yml` 中的镜像名改为 ghcr.io 路径：
+打开 `.env`，设置 `BUILD_MODE`：
 
 ```bash
-sed -i \
-  -e 's|image: zjuse-backend-base:latest|image: ghcr.io/uppi7/zjuse-backend-base:latest|' \
-  -e 's|image: zjuse-backend-course:latest|image: ghcr.io/uppi7/zjuse-backend-course:latest|' \
-  docker-compose.yml
+BUILD_MODE=local     # 从本地源码构建（需要三个仓库在同一父目录下）
+# 或
+BUILD_MODE=registry  # 拉取 CI 产出的远端镜像
 ```
 
-### 4. 启动全部服务
+如果使用 `registry` 模式且镜像仓库需要认证，先登录：
 
 ```bash
-docker compose up --build -d
+echo "<github-token>" | docker login ghcr.io -u <username> --password-stdin
 ```
 
-`--build` 只影响 gateway（本地构建 Nginx 配置），后端镜像直接拉取不重新构建。
+### 3. 启动
 
-gateway 的 Dockerfile 用 `COPY --from` 从两个前端镜像中取出 `/dist`，无需子组源码：
-
-```dockerfile
-COPY --from=ghcr.io/uppi7/zjuse-frontend-base:latest   /dist /usr/share/nginx/html/base
-COPY --from=ghcr.io/uppi7/zjuse-frontend-course:latest /dist /usr/share/nginx/html/course
+```bash
+./build-all.sh
 ```
 
-### 5. 验收测试
+### 停止
+
+```bash
+./build-all.sh --down
+```
+
+### 验收测试
 
 ```bash
 # 等待 MySQL 初始化
@@ -99,16 +84,8 @@ curl -I http://localhost:8080/base/
 curl -I http://localhost:8080/course/
 ```
 
-全部通过后，浏览器访问 `http://localhost:8080/base/` 和 `http://localhost:8080/course/`。
+全部通过后，可浏览器访问 `http://localhost:8080/base/` 和 `http://localhost:8080/course/`。
 
----
-
-## 本地构建
-```bash
-# 要求三个仓库在同一父目录下
-./build-all.sh          # 构建全部镜像 + 启动 + 自动验收
-./build-all.sh --down   # 停止并清理
-```
 
 ---
 
@@ -117,9 +94,6 @@ curl -I http://localhost:8080/course/
 ```bash
 # 查看某服务日志
 docker compose logs backend-course --tail=50
-
-# 验证东西向连通性
-docker compose exec backend-course wget -qO- http://backend-base:8081/api/base/health
 
 # 重置数据库（删除 volume 后 init.sql 会重新执行）
 docker compose down -v && docker compose up -d
