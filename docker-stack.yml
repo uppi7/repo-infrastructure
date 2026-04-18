@@ -1,0 +1,101 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_prod_data:/var/lib/mysql
+    configs:
+      - source: init_sql
+        target: /docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    networks:
+      - backend-net
+    deploy:
+      mode: replicated
+      replicas: 1  
+      placement:
+        constraints:
+          - node.role == manager  
+      restart_policy:
+        condition: on-failure
+
+  backend-base:
+    image: ${IMAGE_PREFIX}backend_base:latest
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_USER: root
+      DB_PASS: ${MYSQL_ROOT_PASSWORD}
+      DB_NAME: db_base
+    networks:
+      - backend-net
+    deploy:
+      mode: replicated
+      replicas: 2  
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first  
+
+  backend-course:
+    image: ${IMAGE_PREFIX}backend_course:latest
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_USER: root
+      DB_PASS: ${MYSQL_ROOT_PASSWORD}
+      DB_NAME: db_course
+      BASE_INFO_API_URL: ${BASE_INFO_API_URL}
+    networks:
+      - backend-net
+    deploy:
+      mode: replicated
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+
+  gateway:
+    image: ${IMAGE_PREFIX}gateway:latest  
+    ports:
+      - "8080:80"  
+    networks:
+      - backend-net
+    deploy:
+      mode: replicated
+      replicas: 2 
+      placement:
+        constraints:
+          - node.role == manager  
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 5s
+      endpoint_mode: vip  
+
+volumes:
+  mysql_prod_data:
+    # can be NFS
+    driver: local  
+
+networks:
+  backend-net:
+    driver: overlay
+    attachable: true  
+
+configs:
+  init_sql:
+    file: /tmp/init.sql

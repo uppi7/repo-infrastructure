@@ -1,8 +1,8 @@
 # IMAGE_PREFIX 由 docker-compose build args 注入
 ARG IMAGE_PREFIX
 
-FROM ${IMAGE_PREFIX}zjuse-frontend-base:latest   AS frontend-base
-FROM ${IMAGE_PREFIX}zjuse-frontend-course:latest AS frontend-course
+FROM ${IMAGE_PREFIX}frontend_base:latest   AS frontend-base
+FROM ${IMAGE_PREFIX}frontend_course:latest AS frontend-course
 
 FROM nginx:1.27-alpine
 RUN rm /etc/nginx/conf.d/default.conf
